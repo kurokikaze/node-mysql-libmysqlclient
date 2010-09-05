@@ -21,6 +21,8 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     constructor_template->SetClassName(String::NewSymbol("MysqlStatement"));
 
     ADD_PROTOTYPE_METHOD(statement, closeSync, CloseSync);
+    ADD_PROTOTYPE_METHOD(statement, errnoSync, ErrnoSync);
+    ADD_PROTOTYPE_METHOD(statement, errorSync, ErrorSync);
     ADD_PROTOTYPE_METHOD(statement, prepareSync, PrepareSync);
     ADD_PROTOTYPE_METHOD(statement, resetSync, ResetSync);
 }
@@ -62,6 +64,38 @@ Handle<Value> MysqlConn::MysqlStatement::CloseSync(const Arguments& args) {
     stmt->_stmt = NULL;
 
     return scope.Close(True());
+}
+
+Handle<Value> MysqlConn::MysqlStatement::ErrnoSync(const Arguments& args) {
+    HandleScope scope;
+
+    MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
+
+    if (!stmt->_stmt) {
+        return THREXC("Statement not initialized");
+    }
+
+    uint32_t errno = mysql_stmt_errno(stmt->_stmt);
+
+    Local<Value> js_result = Integer::New(errno);
+
+    return scope.Close(js_result);
+}
+
+Handle<Value> MysqlConn::MysqlStatement::ErrorSync(const Arguments& args) {
+    HandleScope scope;
+
+    MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
+
+    if (!stmt->_stmt) {
+        return THREXC("Statement not initialized");
+    }
+
+    const char *error = mysql_stmt_error(stmt->_stmt);
+
+    Local<Value> js_result = String::New(error);
+
+    return scope.Close(js_result);
 }
 
 Handle<Value> MysqlConn::MysqlStatement::PrepareSync(const Arguments& args) {
