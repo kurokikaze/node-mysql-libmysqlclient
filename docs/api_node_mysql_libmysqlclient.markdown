@@ -142,10 +142,11 @@ MysqlStatement class
 
     class MysqlStatement {
         /* Methods */
+        Integer affectedRowsSync();
         Boolean closeSync();
         Integer errnoSync();
         String errorSync();
-        Boolean executeSync(query);
+        Boolean executeSync();
         Boolean prepareSync(query);
     }
 
