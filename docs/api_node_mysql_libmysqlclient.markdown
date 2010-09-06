@@ -72,9 +72,9 @@ Nothing yet.
     Array getWarningsSync();
     Integer warningCountSync();
 
-	Undefined debugSync(message);
-	Boolean dumpDebugInfoSync();
-	String statSync();
+    Undefined debugSync(message);
+    Boolean dumpDebugInfoSync();
+    String statSync();
 
 
 Query
@@ -142,6 +142,10 @@ MysqlStatement class
 
     class MysqlStatement {
         /* Methods */
+        Boolean closeSync();
+        Integer errnoSync();
+        String errorSync();
+        Boolean executeSync(query);
         Boolean prepareSync(query);
     }
 

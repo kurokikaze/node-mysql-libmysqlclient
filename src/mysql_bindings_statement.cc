@@ -23,6 +23,7 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(statement, closeSync, CloseSync);
     ADD_PROTOTYPE_METHOD(statement, errnoSync, ErrnoSync);
     ADD_PROTOTYPE_METHOD(statement, errorSync, ErrorSync);
+    ADD_PROTOTYPE_METHOD(statement, executeSync, ExecuteSync);
     ADD_PROTOTYPE_METHOD(statement, prepareSync, PrepareSync);
     ADD_PROTOTYPE_METHOD(statement, resetSync, ResetSync);
 }
@@ -96,6 +97,22 @@ Handle<Value> MysqlConn::MysqlStatement::ErrorSync(const Arguments& args) {
     Local<Value> js_result = String::New(error);
 
     return scope.Close(js_result);
+}
+
+Handle<Value> MysqlConn::MysqlStatement::ExecuteSync(const Arguments& args) {
+    HandleScope scope;
+
+    MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
+
+    if (!stmt->_stmt) {
+        return THREXC("Statement not initialized");
+    }
+
+    if (mysql_stmt_execute(stmt->_stmt)) {
+        return scope.Close(False());
+    }
+
+    return scope.Close(True());
 }
 
 Handle<Value> MysqlConn::MysqlStatement::PrepareSync(const Arguments& args) {
