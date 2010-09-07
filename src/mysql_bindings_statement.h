@@ -21,6 +21,7 @@ static Persistent<String> statement_errorSync_symbol;
 static Persistent<String> statement_executeSync_symbol;
 static Persistent<String> statement_prepareSync_symbol;
 static Persistent<String> statement_resetSync_symbol;
+static Persistent<String> statement_sqlStateSync_symbol;
 
 class MysqlConn::MysqlStatement : public node::EventEmitter {
   public:
@@ -53,6 +54,8 @@ class MysqlConn::MysqlStatement : public node::EventEmitter {
     static Handle<Value> PrepareSync(const Arguments& args);
 
     static Handle<Value> ResetSync(const Arguments& args);
+    
+    static Handle<Value> SqlStateSync(const Arguments& args);
 };
 
 #endif  // NODE_MYSQL_STATEMENT_H  // NOLINT
