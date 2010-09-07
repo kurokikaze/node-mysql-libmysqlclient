@@ -38,6 +38,7 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(statement, errnoSync, ErrnoSync);
     ADD_PROTOTYPE_METHOD(statement, errorSync, ErrorSync);
     ADD_PROTOTYPE_METHOD(statement, executeSync, ExecuteSync);
+    ADD_PROTOTYPE_METHOD(statement, lastInsertIdSync, LastInsertIdSync);
     ADD_PROTOTYPE_METHOD(statement, numRowsSync, NumRowsSync);
     ADD_PROTOTYPE_METHOD(statement, prepareSync, PrepareSync);
     ADD_PROTOTYPE_METHOD(statement, resetSync, ResetSync);
@@ -225,6 +226,20 @@ Handle<Value> MysqlConn::MysqlStatement::ExecuteSync(const Arguments& args) {
     }
 
     return scope.Close(True());
+}
+
+Handle<Value> MysqlConn::MysqlStatement::LastInsertIdSync(const Arguments& args) {
+    HandleScope scope;
+
+    MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
+
+    if (!stmt->_stmt) {
+        return THREXC("Statement not initialized");
+    }
+
+    Local<Value> js_result = Integer::New(mysql_stmt_insert_id(stmt->_stmt));
+
+    return scope.Close(js_result);
 }
 
 Handle<Value> MysqlConn::MysqlStatement::NumRowsSync(const Arguments& args) {
