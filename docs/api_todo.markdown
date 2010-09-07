@@ -21,7 +21,7 @@ Statement class
 mysql_stmt_bind_param()
 mysql_stmt_bind_result()
 [+] mysql_stmt_close()
-mysql_stmt_data_seek()
+[+] mysql_stmt_data_seek()
 [+] mysql_stmt_errno()
 [+] mysql_stmt_error()
 [+] mysql_stmt_execute()
