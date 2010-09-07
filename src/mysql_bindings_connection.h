@@ -33,11 +33,29 @@ NODE_SET_PROTOTYPE_METHOD(constructor_template, #name, method);
 
 #define OBJUNWRAP ObjectWrap::Unwrap
 
+#define REQ_INT_ARG(I, VAR) \
+if (args.Length() <= (I) || !args[I]->IsInt32()) \
+return ThrowException(Exception::TypeError( \
+String::New("Argument " #I " must be an 32-bit integer"))); \
+int32_t VAR = args[I]->Int32Value();
+
+#define REQ_UINT_ARG(I, VAR) \
+if (args.Length() <= (I) || !args[I]->IsUint32()) \
+return ThrowException(Exception::TypeError( \
+String::New("Argument " #I " must be an 32-bit unsigned integer"))); \
+uint32_t VAR = args[I]->Uint32Value();
+
 #define REQ_STR_ARG(I, VAR) \
 if (args.Length() <= (I) || !args[I]->IsString()) \
 return ThrowException(Exception::TypeError( \
 String::New("Argument " #I " must be a string"))); \
 String::Utf8Value VAR(args[I]->ToString());
+
+#define REQ_BOOL_ARG(I, VAR) \
+if (args.Length() <= (I) || !args[I]->IsBoolean()) \
+return ThrowException(Exception::TypeError( \
+String::New("Argument " #I " must be a boolean"))); \
+bool VAR = args[I]->BooleanValue();
 
 #define REQ_FUN_ARG(I, VAR) \
 if (args.Length() <= (I) || !args[I]->IsFunction()) \
