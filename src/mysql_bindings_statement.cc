@@ -38,6 +38,7 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(statement, errnoSync, ErrnoSync);
     ADD_PROTOTYPE_METHOD(statement, errorSync, ErrorSync);
     ADD_PROTOTYPE_METHOD(statement, executeSync, ExecuteSync);
+    ADD_PROTOTYPE_METHOD(statement, numRowsSync, NumRowsSync);
     ADD_PROTOTYPE_METHOD(statement, prepareSync, PrepareSync);
     ADD_PROTOTYPE_METHOD(statement, resetSync, ResetSync);
     ADD_PROTOTYPE_METHOD(statement, storeResultSync, StoreResultSync);
@@ -224,6 +225,25 @@ Handle<Value> MysqlConn::MysqlStatement::ExecuteSync(const Arguments& args) {
     }
 
     return scope.Close(True());
+}
+
+Handle<Value> MysqlConn::MysqlStatement::NumRowsSync(const Arguments& args) {
+    HandleScope scope;
+
+    MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
+
+    if (!stmt->_stmt) {
+        return THREXC("Statement not initialized");
+    }
+
+    // TODO: Can we implement this?
+    /*if (mysql_stms_is_unbuffered(stmt->_stmt)) {
+        return THREXC("Function cannot be used before store all results");
+    }*/
+
+    Local<Value> js_result = Integer::New(mysql_stmt_num_rows(stmt->_stmt));
+
+    return scope.Close(js_result);
 }
 
 Handle<Value> MysqlConn::MysqlStatement::PrepareSync(const Arguments& args) {
