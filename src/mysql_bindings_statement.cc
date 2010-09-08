@@ -39,6 +39,7 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(statement, errnoSync, ErrnoSync);
     ADD_PROTOTYPE_METHOD(statement, errorSync, ErrorSync);
     ADD_PROTOTYPE_METHOD(statement, executeSync, ExecuteSync);
+    ADD_PROTOTYPE_METHOD(statement, freeSync, FreeSync);
     ADD_PROTOTYPE_METHOD(statement, lastInsertIdSync, LastInsertIdSync);
     ADD_PROTOTYPE_METHOD(statement, numRowsSync, NumRowsSync);
     ADD_PROTOTYPE_METHOD(statement, paramCountSync, ParamCountSync);
@@ -54,6 +55,7 @@ MysqlConn::MysqlStatement::MysqlStatement(): EventEmitter() {
 
 MysqlConn::MysqlStatement::~MysqlStatement() {
     if (_stmt) {
+        mysql_stmt_free_result(_stmt);
         mysql_stmt_close(_stmt);
     }
 }
@@ -253,6 +255,18 @@ Handle<Value> MysqlConn::MysqlStatement::ExecuteSync(const Arguments& args) {
     }
 
     return scope.Close(True());
+}
+
+Handle<Value> MysqlConn::MysqlStatement::FreeSync(const Arguments& args) {
+    HandleScope scope;
+
+    MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
+
+    if (!stmt->_stmt) {
+        return THREXC("Statement not initialized");
+    }
+
+    return scope.Close((mysql_stmt_free_result(stmt->_stmt) == 0) ? True() : False());
 }
 
 Handle<Value> MysqlConn::MysqlStatement::LastInsertIdSync(const Arguments& args) {
