@@ -52,8 +52,9 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(statement, sqlStateSync, SqlStateSync);
 }
 
-MysqlConn::MysqlStatement::MysqlStatement(): EventEmitter() {
-    _stmt = NULL;
+MysqlConn::MysqlStatement::MysqlStatement (MYSQL_STMT *my_stmt): EventEmitter() {
+    this->_stmt = my_stmt;
+    this->prepared = false;
 }
 
 MysqlConn::MysqlStatement::~MysqlStatement() {
