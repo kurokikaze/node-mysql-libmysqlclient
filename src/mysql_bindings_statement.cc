@@ -6,6 +6,7 @@ See license text in LICENSE file
 */
 
 #include "./mysql_bindings_connection.h"
+#include "./mysql_bindings_result.h"
 #include "./mysql_bindings_statement.h"
 
 Persistent<FunctionTemplate> MysqlConn::MysqlStatement::constructor_template;
@@ -46,6 +47,7 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(statement, paramCountSync, ParamCountSync);
     ADD_PROTOTYPE_METHOD(statement, prepareSync, PrepareSync);
     ADD_PROTOTYPE_METHOD(statement, resetSync, ResetSync);
+    ADD_PROTOTYPE_METHOD(statement, resultMetadataSync, ResultMetadataSync);
     ADD_PROTOTYPE_METHOD(statement, storeResultSync, StoreResultSync);
     ADD_PROTOTYPE_METHOD(statement, sqlStateSync, SqlStateSync);
 }
@@ -363,6 +365,31 @@ Handle<Value> MysqlConn::MysqlStatement::ResetSync(const Arguments& args) {
     }
 
     return scope.Close(True());
+}
+
+Handle<Value> MysqlConn::MysqlStatement::ResultMetadataSync(const Arguments& args) {
+    HandleScope scope;
+
+    MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
+
+    if (!stmt->_stmt) {
+        return THREXC("Statement not initialized");
+    }
+
+    MYSQL_RES *my_result = mysql_stmt_result_metadata(stmt->_stmt);
+
+    if (!my_result) {
+        return scope.Close(False());
+    }
+
+    int argc = 2;
+    Local<Value> argv[2];
+    argv[0] = External::New(my_result);
+    argv[1] = Integer::New(mysql_stmt_field_count(stmt->_stmt));
+    Persistent<Object> js_result(MysqlConn::MysqlResult::constructor_template->
+                             GetFunction()->NewInstance(argc, argv));
+
+    return scope.Close(js_result);
 }
 
 Handle<Value> MysqlConn::MysqlStatement::StoreResultSync(const Arguments& args) {
