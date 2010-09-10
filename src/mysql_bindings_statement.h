@@ -53,6 +53,10 @@ class MysqlConn::MysqlStatement : public node::EventEmitter {
 
   protected:
     MYSQL_STMT *_stmt;
+
+    MYSQL_BIND *binds;
+    unsigned long param_count;
+
     bool prepared;
     bool stored;
 
@@ -60,7 +64,16 @@ class MysqlConn::MysqlStatement : public node::EventEmitter {
 
     ~MysqlStatement();
 
+    // Constructor
+
     static Handle<Value> New(const Arguments& args);
+
+    // Properties
+
+    static Handle<Value> ParamCountGetter(Local<String> property,
+                                           const AccessorInfo &info);
+
+    // Methods
 
     static Handle<Value> AffectedRowsSync(const Arguments& args);
 
