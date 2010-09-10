@@ -22,9 +22,7 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     constructor_template->InstanceTemplate()->SetInternalFieldCount(1);
     constructor_template->SetClassName(String::NewSymbol("MysqlStatement"));
 
-
     Local<ObjectTemplate> instance_template = constructor_template->InstanceTemplate(); // NOLINT
-
 
     // Constants
     NODE_DEFINE_CONSTANT(instance_template, STMT_ATTR_UPDATE_MAX_LENGTH);
@@ -55,12 +53,13 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
 MysqlConn::MysqlStatement::MysqlStatement (MYSQL_STMT *my_stmt): EventEmitter() {
     this->_stmt = my_stmt;
     this->prepared = false;
+    this->stored = false;
 }
 
 MysqlConn::MysqlStatement::~MysqlStatement() {
-    if (_stmt) {
-        mysql_stmt_free_result(_stmt);
-        mysql_stmt_close(_stmt);
+    if (this->_stmt) {
+        mysql_stmt_free_result(this->_stmt);
+        mysql_stmt_close(this->_stmt);
     }
 }
 
@@ -68,9 +67,9 @@ Handle<Value> MysqlConn::MysqlStatement::New(const Arguments& args) {
     HandleScope scope;
 
     REQ_EXT_ARG(0, js_stmt);
-    MYSQL_STMT *stmt = static_cast<MYSQL_STMT*>(js_stmt->Value());
-    MysqlStatement *my_stmt = new MysqlStatement(stmt);
-    my_stmt->Wrap(args.This());
+    MYSQL_STMT *my_stmt = static_cast<MYSQL_STMT*>(js_stmt->Value());
+    MysqlStatement *binding_stmt = new MysqlStatement(my_stmt);
+    binding_stmt->Wrap(args.This());
 
     return args.This();
 }
@@ -80,9 +79,8 @@ Handle<Value> MysqlConn::MysqlStatement::AffectedRowsSync(const Arguments& args)
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
 
     my_ulonglong affected_rows = mysql_stmt_affected_rows(stmt->_stmt);
 
@@ -100,9 +98,7 @@ Handle<Value> MysqlConn::MysqlStatement::AttrGetSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
     REQ_INT_ARG(0, attr_integer_key)
     enum_stmt_attr_type attr_key =
@@ -135,9 +131,7 @@ Handle<Value> MysqlConn::MysqlStatement::AttrSetSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
     REQ_INT_ARG(0, attr_integer_key)
     enum_stmt_attr_type attr_key =
@@ -175,9 +169,7 @@ Handle<Value> MysqlConn::MysqlStatement::CloseSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Already closed");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
     if (mysql_stmt_close(stmt->_stmt)) {
         return THREXC("Error in mysql_stmt_close");
@@ -193,9 +185,9 @@ Handle<Value> MysqlConn::MysqlStatement::DataSeekSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Already closed");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
+    MYSQLSTMT_MUSTBE_STORED;
 
     REQ_UINT_ARG(0, row_num)
 
@@ -218,9 +210,7 @@ Handle<Value> MysqlConn::MysqlStatement::ErrnoSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
     uint32_t errno = mysql_stmt_errno(stmt->_stmt);
 
@@ -234,9 +224,7 @@ Handle<Value> MysqlConn::MysqlStatement::ErrorSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
     const char *error = mysql_stmt_error(stmt->_stmt);
 
@@ -250,9 +238,8 @@ Handle<Value> MysqlConn::MysqlStatement::ExecuteSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
 
     if (mysql_stmt_execute(stmt->_stmt)) {
         return scope.Close(False());
@@ -266,9 +253,8 @@ Handle<Value> MysqlConn::MysqlStatement::FieldCountSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
 
     return scope.Close(Integer::New(mysql_stmt_field_count(stmt->_stmt)));
 }
@@ -278,9 +264,7 @@ Handle<Value> MysqlConn::MysqlStatement::FreeSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
     return scope.Close((mysql_stmt_free_result(stmt->_stmt) == 0) ? True() : False());
 }
@@ -290,9 +274,8 @@ Handle<Value> MysqlConn::MysqlStatement::LastInsertIdSync(const Arguments& args)
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
 
     Local<Value> js_result = Integer::New(mysql_stmt_insert_id(stmt->_stmt));
 
@@ -304,9 +287,9 @@ Handle<Value> MysqlConn::MysqlStatement::NumRowsSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
+    MYSQLSTMT_MUSTBE_STORED;  //TODO(Sannis): Or all result already fetched!
 
     // TODO: Can we implement this?
     /*if (mysql_stmt_is_unbuffered(stmt->_stmt)) {
@@ -323,9 +306,8 @@ Handle<Value> MysqlConn::MysqlStatement::ParamCountSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
 
     Local<Value> js_result = Integer::New(mysql_stmt_param_count(stmt->_stmt));
 
@@ -337,15 +319,11 @@ Handle<Value> MysqlConn::MysqlStatement::PrepareSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (args.Length() == 0 || !args[0]->IsString()) {
-        return THREXC("First arg of stmt.prepareSync() must be a string");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
-    String::Utf8Value query(args[0]);
+    REQ_STR_ARG(0, query)
 
-    int query_len = args[0]->ToString()->Utf8Length();
-
-    if (mysql_stmt_prepare(stmt->_stmt, *query, query_len)) {
+    if (mysql_stmt_prepare(stmt->_stmt, *query, query.length())) {
         return scope.Close(False());
     }
 
@@ -357,9 +335,9 @@ Handle<Value> MysqlConn::MysqlStatement::ResetSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
+
 
     if (mysql_stmt_reset(stmt->_stmt)) {
         return THREXC("Error in mysql_stmt_reset");
@@ -373,9 +351,8 @@ Handle<Value> MysqlConn::MysqlStatement::ResultMetadataSync(const Arguments& arg
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
 
     MYSQL_RES *my_result = mysql_stmt_result_metadata(stmt->_stmt);
 
@@ -398,11 +375,16 @@ Handle<Value> MysqlConn::MysqlStatement::StoreResultSync(const Arguments& args) 
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
+    MYSQLSTMT_MUSTBE_INITIALIZED;
+    MYSQLSTMT_MUSTBE_PREPARED;
+
+    if (mysql_stmt_store_result(stmt->_stmt) != 0) {
+        return scope.Close(False());
     }
 
-    return scope.Close(mysql_stmt_store_result(stmt->_stmt) ? False() : True());
+    stmt->stored = true;
+
+    return scope.Close(True());
 }
 
 Handle<Value> MysqlConn::MysqlStatement::SqlStateSync(const Arguments& args) {
@@ -410,9 +392,7 @@ Handle<Value> MysqlConn::MysqlStatement::SqlStateSync(const Arguments& args) {
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
 
-    if (!stmt->_stmt) {
-        return THREXC("Statement not initialized");
-    }
+    MYSQLSTMT_MUSTBE_INITIALIZED;
 
     Local<Value> js_result = String::New(mysql_stmt_sqlstate(stmt->_stmt));
 

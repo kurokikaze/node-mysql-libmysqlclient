@@ -14,6 +14,18 @@ See license text in LICENSE file
 #include <node.h>
 #include <node_events.h>
 
+#define MYSQLSTMT_MUSTBE_INITIALIZED     if (!stmt->_stmt) { \
+        return THREXC("Statement not initialized"); \
+    }
+
+#define MYSQLSTMT_MUSTBE_PREPARED     if (!stmt->prepared) { \
+        return THREXC("Statement not prepared"); \
+    }
+
+#define MYSQLSTMT_MUSTBE_STORED     if (!stmt->stored) { \
+        return THREXC("Statement result not stored"); \
+    }
+
 static Persistent<String> statement_affectedRowsSync_symbol;
 static Persistent<String> statement_attrGetSync_symbol;
 static Persistent<String> statement_attrSetSync_symbol;
@@ -42,6 +54,7 @@ class MysqlConn::MysqlStatement : public node::EventEmitter {
   protected:
     MYSQL_STMT *_stmt;
     bool prepared;
+    bool stored;
 
     MysqlStatement(MYSQL_STMT *my_stmt);
 
