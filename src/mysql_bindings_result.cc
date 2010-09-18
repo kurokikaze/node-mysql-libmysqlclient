@@ -1,16 +1,26 @@
-/*
-Copyright by node-mysql-libmysqlclient contributors.
-See contributors list in README
+/*!
+ * Copyright by Oleg Efimov and node-mysql-libmysqlclient contributors
+ * See contributors list in README
+ *
+ * See license text in LICENSE file
+ */
 
-See license text in LICENSE file
-*/
-
+/**
+ * Include headers
+ *
+ * @ignore
+ */
 #include "./mysql_bindings_connection.h"
 #include "./mysql_bindings_result.h"
 
-Persistent<FunctionTemplate> MysqlConn::MysqlResult::constructor_template;
+/**
+ * Init V8 structures for MysqlResult class
+ *
+ * @ignore
+ */
+Persistent<FunctionTemplate> MysqlResult::constructor_template;
 
-void MysqlConn::MysqlResult::Init(Handle<Object> target) {
+void MysqlResult::Init(Handle<Object> target) {
     HandleScope scope;
 
     Local<FunctionTemplate> t = FunctionTemplate::New(New);
@@ -21,8 +31,11 @@ void MysqlConn::MysqlResult::Init(Handle<Object> target) {
     constructor_template->InstanceTemplate()->SetInternalFieldCount(1);
     constructor_template->SetClassName(String::NewSymbol("MysqlResult"));
 
+    Local<ObjectTemplate> instance_template =
+        constructor_template->InstanceTemplate();
+
     // Properties
-    constructor_template->InstanceTemplate()->SetAccessor(String::New("fieldCount"), FieldCountGetter);  // NOLINT
+    instance_template->SetAccessor(V8STR("fieldCount"), FieldCountGetter);
 
     // Methods
     ADD_PROTOTYPE_METHOD(result, dataSeekSync, DataSeekSync);
@@ -38,43 +51,38 @@ void MysqlConn::MysqlResult::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(result, fieldTellSync, FieldTellSync);
     ADD_PROTOTYPE_METHOD(result, freeSync, FreeSync);
     ADD_PROTOTYPE_METHOD(result, numRowsSync, NumRowsSync);
+
+    // Make it visible in JavaScript
+    target->Set(String::NewSymbol("MysqlResult"),
+                constructor_template->GetFunction());
 }
 
-MysqlConn::MysqlResult::MysqlResult(): EventEmitter() {}
+MysqlResult::MysqlResult(): EventEmitter() {}
 
-MysqlConn::MysqlResult::~MysqlResult() {
+MysqlResult::~MysqlResult() {
     this->Free();
 }
 
-void MysqlConn::MysqlResult::AddFieldProperties(
+void MysqlResult::AddFieldProperties(
                                         Local<Object> &js_field_obj,
                                         MYSQL_FIELD *field) {
-    js_field_obj->Set(String::New("name"),
-                        String::New(field->name ? field->name : ""));
-    js_field_obj->Set(String::New("orgname"),
-                        String::New(field->org_name ? field->org_name : ""));
-    js_field_obj->Set(String::New("table"),
-                        String::New(field->table ? field->table : ""));
-    js_field_obj->Set(String::New("orgtable"),
-                        String::New(field->org_table ? field->org_table : ""));
-    js_field_obj->Set(String::New("def"),
-                        String::New(field->def ? field->def : ""));
+    js_field_obj->Set(V8STR("name"), V8STR(field->name ? field->name : ""));
+    js_field_obj->Set(V8STR("orgname"),
+                      V8STR(field->org_name ? field->org_name : ""));
+    js_field_obj->Set(V8STR("table"), V8STR(field->table ? field->table : ""));
+    js_field_obj->Set(V8STR("orgtable"),
+                      V8STR(field->org_table ? field->org_table : ""));
+    js_field_obj->Set(V8STR("def"), V8STR(field->def ? field->def : ""));
 
-    js_field_obj->Set(String::New("max_length"),
-                        Integer::New(field->max_length));
-    js_field_obj->Set(String::New("length"),
-                        Integer::New(field->length));
-    js_field_obj->Set(String::New("charsetnr"),
-                        Integer::New(field->charsetnr));
-    js_field_obj->Set(String::New("flags"),
-                        Integer::New(field->flags));
-    js_field_obj->Set(String::New("type"),
-                        Integer::New(field->type));
-    js_field_obj->Set(String::New("decimals"),
-                        Integer::New(field->decimals));
+    js_field_obj->Set(V8STR("max_length"), Integer::New(field->max_length));
+    js_field_obj->Set(V8STR("length"), Integer::New(field->length));
+    js_field_obj->Set(V8STR("charsetnr"), Integer::New(field->charsetnr));
+    js_field_obj->Set(V8STR("flags"), Integer::New(field->flags));
+    js_field_obj->Set(V8STR("type"), Integer::New(field->type));
+    js_field_obj->Set(V8STR("decimals"), Integer::New(field->decimals));
 }
 
-void MysqlConn::MysqlResult::SetFieldValue(
+void MysqlResult::SetFieldValue(
                                         Handle<Value> &js_field,
                                         MYSQL_FIELD field,
                                         char* field_value) {
@@ -91,7 +99,7 @@ void MysqlConn::MysqlResult::SetFieldValue(
         case MYSQL_TYPE_LONGLONG:  // BIGINT field
         case MYSQL_TYPE_YEAR:  // YEAR field
             if (field_value) {
-              js_field = String::New(field_value)->ToInteger();
+              js_field = V8STR(field_value)->ToInteger();
             }
             break;
         case MYSQL_TYPE_DECIMAL:  // DECIMAL or NUMERIC field
@@ -99,7 +107,7 @@ void MysqlConn::MysqlResult::SetFieldValue(
         case MYSQL_TYPE_FLOAT:  // FLOAT field
         case MYSQL_TYPE_DOUBLE:  // DOUBLE or REAL field
             if (field_value) {
-              js_field = String::New(field_value)->ToNumber();
+              js_field = V8STR(field_value)->ToNumber();
             }
             break;
         case MYSQL_TYPE_TIME:  // TIME field
@@ -120,23 +128,30 @@ void MysqlConn::MysqlResult::SetFieldValue(
               sscanf(field_value, "%d-%d-%d %d:%d:%d",
                                   &year, &month, &day, &hour, &min, &sec);
               time_t rawtime, gmt_delta;
-              struct tm * timeinfo;
+              struct tm timeinfo;
               time(&rawtime);
-              timeinfo = localtime(&rawtime);
-              h1 = timeinfo->tm_hour - (timeinfo->tm_isdst > 0 ? 1 : 0);
-              m1 = timeinfo->tm_min;
-              timeinfo = gmtime(&rawtime);
-              h2 = timeinfo->tm_hour;
-              m2 = timeinfo->tm_min;
+              if (!localtime_r(&rawtime, &timeinfo)) {
+                  js_field = V8STR(field_value);
+                  return;
+              }
+              h1 = timeinfo.tm_hour - (timeinfo.tm_isdst > 0 ? 1 : 0);
+              m1 = timeinfo.tm_min;
+              if (!gmtime_r(&rawtime, &timeinfo)) {
+                  js_field = V8STR(field_value);
+                  return;
+              }
+              h2 = timeinfo.tm_hour;
+              m2 = timeinfo.tm_min;
               gmt_delta = (((h1 - h2 + 24)%24)*60 + (m1-m2))*60;
-              timeinfo->tm_year = year - 1900;
-              timeinfo->tm_mon = month - 1;
-              timeinfo->tm_mday = day;
-              timeinfo->tm_hour = hour;
-              timeinfo->tm_min = min;
-              timeinfo->tm_sec = sec;
-              rawtime = mktime(timeinfo);
-              js_field = Date::New(static_cast<double>(rawtime + gmt_delta)*1000);
+              timeinfo.tm_year = year - 1900;
+              timeinfo.tm_mon = month - 1;
+              timeinfo.tm_mday = day;
+              timeinfo.tm_hour = hour;
+              timeinfo.tm_min = min;
+              timeinfo.tm_sec = sec;
+              rawtime = mktime(&timeinfo);
+              js_field = Date::New(
+                             static_cast<double>(rawtime + gmt_delta)*1000);
             }
             break;
         case MYSQL_TYPE_DATE:  // DATE field
@@ -146,23 +161,30 @@ void MysqlConn::MysqlResult::SetFieldValue(
               int h1 = 0, h2 = 0, m1 = 0, m2 = 0;
               sscanf(field_value, "%d-%d-%d", &year, &month, &day);
               time_t rawtime, gmt_delta;
-              struct tm * timeinfo;
+              struct tm timeinfo;
               time(&rawtime);
-              timeinfo = localtime(&rawtime);
-              h1 = timeinfo->tm_hour - (timeinfo->tm_isdst > 0 ? 1 : 0);
-              m1 = timeinfo->tm_min;
-              timeinfo = gmtime(&rawtime);
-              h2 = timeinfo->tm_hour;
-              m2 = timeinfo->tm_min;
+              if (!localtime_r(&rawtime, &timeinfo)) {
+                  js_field = V8STR(field_value);
+                  return;
+              }
+              h1 = timeinfo.tm_hour - (timeinfo.tm_isdst > 0 ? 1 : 0);
+              m1 = timeinfo.tm_min;
+              if (!gmtime_r(&rawtime, &timeinfo)) {
+                  js_field = V8STR(field_value);
+                  return;
+              }
+              h2 = timeinfo.tm_hour;
+              m2 = timeinfo.tm_min;
               gmt_delta = (((h1 - h2 + 24)%24)*60 + (m1-m2))*60;
-              timeinfo->tm_year = year - 1900;
-              timeinfo->tm_mon = month - 1;
-              timeinfo->tm_mday = day;
-              timeinfo->tm_hour = 0;
-              timeinfo->tm_min = 0;
-              timeinfo->tm_sec = 0;
-              rawtime = mktime(timeinfo);
-              js_field = Date::New(static_cast<double>(rawtime + gmt_delta)*1000);
+              timeinfo.tm_year = year - 1900;
+              timeinfo.tm_mon = month - 1;
+              timeinfo.tm_mday = day;
+              timeinfo.tm_hour = 0;
+              timeinfo.tm_min = 0;
+              timeinfo.tm_sec = 0;
+              rawtime = mktime(&timeinfo);
+              js_field = Date::New(
+                             static_cast<double>(rawtime + gmt_delta)*1000);
             }
             break;
         case MYSQL_TYPE_TINY_BLOB:
@@ -172,20 +194,20 @@ void MysqlConn::MysqlResult::SetFieldValue(
         case MYSQL_TYPE_VAR_STRING:
         case MYSQL_TYPE_VARCHAR:
             if (field_value) {
-                js_field = String::New(field_value);
+                js_field = V8STR(field_value);
             }
             break;
         case MYSQL_TYPE_SET:  // SET field
             // TODO(Sannis): Maybe memory leaks here
             if (field_value) {
-                char *pch;
+                char *pch, *last;
                 int i = 0;
                 Local<Array> js_field_array = Array::New();
 
-                pch = strtok(field_value, ",");
+                pch = strtok_r(field_value, ",", &last);
                 while (pch != NULL) {
-                    js_field_array->Set(Integer::New(i), String::New(pch));
-                    pch = strtok(NULL, ",");
+                    js_field_array->Set(Integer::New(i), V8STR(pch));
+                    pch = strtok_r(NULL, ",", &last);
                     i++;
                 }
 
@@ -194,33 +216,33 @@ void MysqlConn::MysqlResult::SetFieldValue(
             break;
         case MYSQL_TYPE_ENUM:  // ENUM field
             if (field_value) {
-                js_field = String::New(field_value);
+                js_field = V8STR(field_value);
             }
             break;
         case MYSQL_TYPE_GEOMETRY:  // Spatial fielda
             // See for information:
             // http://dev.mysql.com/doc/refman/5.1/en/spatial-extensions.html
             if (field_value) {
-                js_field = String::New(field_value);
+                js_field = V8STR(field_value);
             }
             break;
         default:
             if (field_value) {
-                js_field = String::New(field_value);
+                js_field = V8STR(field_value);
             }
     }
 
     // Proper MYSQL_TYPE_SET type handle, thanks for Mark Hechim
     // http://www.mirrorservice.org/sites/ftp.mysql.com/doc/refman/5.1/en/c-api-datatypes.html#c10485
     if (field_value && (field.flags & SET_FLAG)) {
-        char *pch;
+        char *pch, *last;
         int i = 0;
         Local<Array> js_field_array = Array::New();
 
-        pch = strtok(field_value, ",");
+        pch = strtok_r(field_value, ",", &last);
         while (pch != NULL) {
-            js_field_array->Set(Integer::New(i), String::New(pch));
-            pch = strtok(NULL, ",");
+            js_field_array->Set(Integer::New(i), V8STR(pch));
+            pch = strtok_r(NULL, ",", &last);
             i++;
         }
 
@@ -228,14 +250,19 @@ void MysqlConn::MysqlResult::SetFieldValue(
     }
 }
 
-void MysqlConn::MysqlResult::Free() {
+void MysqlResult::Free() {
     if (_res) {
         mysql_free_result(_res);
         _res = NULL;
     }
 }
 
-Handle<Value> MysqlConn::MysqlResult::New(const Arguments& args) {
+/**
+ * Creates new MysqlResult object
+ *
+ * @constructor
+ */
+Handle<Value> MysqlResult::New(const Arguments& args) {
     HandleScope scope;
 
     REQ_EXT_ARG(0, js_res);
@@ -247,7 +274,13 @@ Handle<Value> MysqlConn::MysqlResult::New(const Arguments& args) {
     return args.This();
 }
 
-Handle<Value> MysqlConn::MysqlResult::FieldCountGetter(Local<String> property,
+/**
+ * Get the number of fields in a result
+ *
+ * @getter
+ * @return {Integer|Undefined}
+ */
+Handle<Value> MysqlResult::FieldCountGetter(Local<String> property,
                                                    const AccessorInfo &info) {
     HandleScope scope;
 
@@ -264,7 +297,12 @@ Handle<Value> MysqlConn::MysqlResult::FieldCountGetter(Local<String> property,
     }
 }
 
-Handle<Value> MysqlConn::MysqlResult::DataSeekSync(const Arguments& args) {
+/**
+ * Adjusts the result pointer to an arbitary row in the result
+ *
+ * @param {Integer} The field offset
+ */
+Handle<Value> MysqlResult::DataSeekSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -273,37 +311,39 @@ Handle<Value> MysqlConn::MysqlResult::DataSeekSync(const Arguments& args) {
         return THREXC("Result has been freed.");
     }
 
-    if (args.Length() == 0 || !args[0]->IsNumber()) {
-        return THREXC("First arg of res.fieldSeek() must be a number");
-    }
-
-    uint32_t row_num = args[0]->IntegerValue();
+    REQ_UINT_ARG(0, offset)
 
     if (mysql_result_is_unbuffered(res->_res)) {
         return THREXC("Function cannot be used with MYSQL_USE_RESULT");
     }
 
-    if (row_num < 0 || row_num >= mysql_num_rows(res->_res)) {
+    if (offset < 0 || offset >= mysql_num_rows(res->_res)) {
         return THREXC("Invalid row offset");
     }
 
-    mysql_data_seek(res->_res, row_num);
+    mysql_data_seek(res->_res, offset);
 
     return Undefined();
 }
 
-int MysqlConn::MysqlResult::EIO_After_FetchAll(eio_req *req) {
+/**
+ * EIO wrapper functions for MysqlResult::FetchAll
+ */
+#ifndef MYSQL_NON_THREADSAFE
+int MysqlResult::EIO_After_FetchAll(eio_req *req) {
+    HandleScope scope;
+
     ev_unref(EV_DEFAULT_UC);
-    struct fetchAll_request *fetchAll_req = (struct fetchAll_request *)(req->data); // NOLINT
+    struct fetchAll_request *fetchAll_req =
+        reinterpret_cast<struct fetchAll_request *>(req->data);
 
     int argc = 1; /* node.js convention, there is always one argument */
     Local<Value> argv[2];
-    HandleScope scope;
 
     if (req->result) {
-        argv[0] = Exception::Error(String::New("Error on fetching"));
+        argv[0] = V8EXC("Error on fetching");
     } else {
-        argv[1] = Local<Value>::New(scope.Close(fetchAll_req->js_result));
+        argv[1] = Local<Value>::New(fetchAll_req->js_result);
         argv[0] = Local<Value>::New(Null());
         argc = 2;
     }
@@ -323,10 +363,12 @@ int MysqlConn::MysqlResult::EIO_After_FetchAll(eio_req *req) {
     return 0;
 }
 
-int MysqlConn::MysqlResult::EIO_FetchAll(eio_req *req) {
-    struct fetchAll_request *fetchAll_req = (struct fetchAll_request *)(req->data); // NOLINT
+int MysqlResult::EIO_FetchAll(eio_req *req) {
+    HandleScope scope;
 
-    MysqlConn::MysqlResult *res = fetchAll_req->res;
+    struct fetchAll_request *fetchAll_req =
+        reinterpret_cast<struct fetchAll_request *>(req->data);
+    MysqlResult *res = fetchAll_req->res;
 
     MYSQL_FIELD *fields = mysql_fetch_fields(res->_res);
     uint32_t num_fields = mysql_num_fields(res->_res);
@@ -344,7 +386,7 @@ int MysqlConn::MysqlResult::EIO_FetchAll(eio_req *req) {
         for ( j = 0; j < num_fields; j++ ) {
             SetFieldValue(js_field, fields[j], result_row[j]);
 
-            js_result_row->Set(String::New(fields[j].name), js_field);
+            js_result_row->Set(V8STR(fields[j].name), js_field);
         }
 
         js_result->Set(Integer::New(i), js_result_row);
@@ -352,18 +394,26 @@ int MysqlConn::MysqlResult::EIO_FetchAll(eio_req *req) {
         i++;
     }
 
-    fetchAll_req->js_result = js_result;
+    fetchAll_req->js_result = scope.Close(js_result);
     req->result = 0;
 
     return 0;
 }
+#endif
 
-Handle<Value> MysqlConn::MysqlResult::FetchAll(const Arguments& args) {
+/**
+ * Fetches all result rows as an array
+ *
+ * @param {Function(error, rows)} callback
+ */
+Handle<Value> MysqlResult::FetchAll(const Arguments& args) {
     HandleScope scope;
-
+#ifdef MYSQL_NON_THREADSAFE
+    return THREXC(MYSQL_NON_THREADSAFE_ERRORSTRING);
+#else
     REQ_FUN_ARG(0, callback);
 
-    MysqlConn::MysqlResult *res = OBJUNWRAP<MysqlConn::MysqlResult>(args.This()); // NOLINT
+    MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This()); // NOLINT
 
     if (!res->_res) {
         return THREXC("Result has been freed.");
@@ -386,9 +436,15 @@ Handle<Value> MysqlConn::MysqlResult::FetchAll(const Arguments& args) {
     res->Ref();
 
     return Undefined();
+#endif
 }
 
-Handle<Value> MysqlConn::MysqlResult::FetchAllSync(const Arguments& args) {
+/**
+ * Fetches all result rows as an array
+ *
+ * @return {Array}
+ */
+Handle<Value> MysqlResult::FetchAllSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -413,7 +469,7 @@ Handle<Value> MysqlConn::MysqlResult::FetchAllSync(const Arguments& args) {
         for ( j = 0; j < num_fields; j++ ) {
             SetFieldValue(js_field, fields[j], result_row[j]);
 
-            js_result_row->Set(String::New(fields[j].name), js_field);
+            js_result_row->Set(V8STR(fields[j].name), js_field);
         }
 
         js_result->Set(Integer::New(i), js_result_row);
@@ -424,7 +480,12 @@ Handle<Value> MysqlConn::MysqlResult::FetchAllSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FetchArraySync(const Arguments& args) {
+/**
+ * Fetch a result row as an array
+ *
+ * @return {Array}
+ */
+Handle<Value> MysqlResult::FetchArraySync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -457,7 +518,12 @@ Handle<Value> MysqlConn::MysqlResult::FetchArraySync(const Arguments& args) {
     return scope.Close(js_result_row);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FetchFieldSync(const Arguments& args) {
+/**
+ * Returns meta-data of the next field in the result set
+ *
+ * @return {Object}
+ */
+Handle<Value> MysqlResult::FetchFieldSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -482,7 +548,13 @@ Handle<Value> MysqlConn::MysqlResult::FetchFieldSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FetchFieldDirectSync(const Arguments& args) { // NOLINT
+/**
+ * Fetch meta-data for a single field
+ *
+ * @param {Integer} field number
+ * @return {Array}
+ */
+Handle<Value> MysqlResult::FetchFieldDirectSync(const Arguments& args) { // NOLINT
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -491,11 +563,7 @@ Handle<Value> MysqlConn::MysqlResult::FetchFieldDirectSync(const Arguments& args
         return THREXC("Result has been freed.");
     }
 
-    if (args.Length() == 0 || !args[0]->IsNumber()) {
-        return THREXC("First arg of res.fetchFieldDirect() must be a number");
-    }
-
-    uint32_t field_num = args[0]->IntegerValue();
+    REQ_INT_ARG(0, field_num)
 
     MYSQL_FIELD *field;
 
@@ -513,7 +581,12 @@ Handle<Value> MysqlConn::MysqlResult::FetchFieldDirectSync(const Arguments& args
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FetchFieldsSync(const Arguments& args) {
+/**
+ * Returns an array of objects representing the fields in a result set
+ *
+ * @return {Array}
+ */
+Handle<Value> MysqlResult::FetchFieldsSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -541,7 +614,12 @@ Handle<Value> MysqlConn::MysqlResult::FetchFieldsSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FetchLengthsSync(const Arguments& args) {
+/**
+ * Returns the lengths of the columns of the current row in the result set
+ *
+ * @return {Array}
+ */
+Handle<Value> MysqlResult::FetchLengthsSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -551,7 +629,7 @@ Handle<Value> MysqlConn::MysqlResult::FetchLengthsSync(const Arguments& args) {
     }
 
     uint32_t num_fields = mysql_num_fields(res->_res);
-    unsigned long int *lengths = mysql_fetch_lengths(res->_res);
+    unsigned long int *lengths = mysql_fetch_lengths(res->_res); // NOLINT (unsigned long required by API)
     uint32_t i = 0;
 
     Local<Array> js_result = Array::New();
@@ -567,7 +645,12 @@ Handle<Value> MysqlConn::MysqlResult::FetchLengthsSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FetchObjectSync(const Arguments& args) {
+/**
+ * Fetch a result row as an object
+ *
+ * @return {Object}
+ */
+Handle<Value> MysqlResult::FetchObjectSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -595,13 +678,18 @@ Handle<Value> MysqlConn::MysqlResult::FetchObjectSync(const Arguments& args) {
     for ( j = 0; j < num_fields; j++ ) {
         SetFieldValue(js_field, fields[j], result_row[j]);
 
-        js_result_row->Set(String::New(fields[j].name), js_field);
+        js_result_row->Set(V8STR(fields[j].name), js_field);
     }
 
     return scope.Close(js_result_row);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FieldSeekSync(const Arguments& args) {
+/**
+ * Set result pointer to a specified field offset
+ *
+ * @param {Integer} field number
+ */
+Handle<Value> MysqlResult::FieldSeekSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -610,11 +698,7 @@ Handle<Value> MysqlConn::MysqlResult::FieldSeekSync(const Arguments& args) {
         return THREXC("Result has been freed.");
     }
 
-    if (args.Length() == 0 || !args[0]->IsNumber()) {
-        return THREXC("First arg of res.fieldSeek() must be a number");
-    }
-
-    uint32_t field_num = args[0]->IntegerValue();
+    REQ_UINT_ARG(0, field_num)
 
     if (field_num < 0 || field_num >= res->field_count) {
         return THREXC("Invalid field offset");
@@ -625,7 +709,12 @@ Handle<Value> MysqlConn::MysqlResult::FieldSeekSync(const Arguments& args) {
     return Undefined();
 }
 
-Handle<Value> MysqlConn::MysqlResult::FieldTellSync(const Arguments& args) {
+/**
+ * Returns the position of the field cursor
+ *
+ * @return {Integer}
+ */
+Handle<Value> MysqlResult::FieldTellSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -639,7 +728,10 @@ Handle<Value> MysqlConn::MysqlResult::FieldTellSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlResult::FreeSync(const Arguments& args) {
+/**
+ * Frees the memory associated with a result
+ */
+Handle<Value> MysqlResult::FreeSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());
@@ -650,10 +742,15 @@ Handle<Value> MysqlConn::MysqlResult::FreeSync(const Arguments& args) {
 
     res->Free();
 
-    return scope.Close(True());
+    return Undefined();
 }
 
-Handle<Value> MysqlConn::MysqlResult::NumRowsSync(const Arguments& args) {
+/**
+ * Gets the number of rows in a result
+ *
+ * @return {Integer}
+ */
+Handle<Value> MysqlResult::NumRowsSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlResult *res = OBJUNWRAP<MysqlResult>(args.This());

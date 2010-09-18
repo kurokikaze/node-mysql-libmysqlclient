@@ -10,7 +10,8 @@ var cfg = require("../config").cfg;
 // Require modules
 var
   sys = require("sys"),
-  mysql_libmysqlclient = require("../../mysql-libmysqlclient");
+  mysql_libmysqlclient = require("../../mysql-libmysqlclient"),
+  mysql_bindings = require("../../mysql_bindings");
 
 /*
 Complex test for methods:
@@ -31,11 +32,7 @@ var testFieldSeekAndTellAndFetchAndFetchDirectAndFetchFieldsSync = function (tes
     field_tell;
   test.ok(conn, "mysql_libmysqlclient.createConnectionSync(host, user, password, database)");
   
-  res = conn.querySync("DROP TABLE IF EXISTS " + cfg.test_table + ";");
-  res = conn.querySync("CREATE TABLE " + cfg.test_table +
-    " (autoincrement_id BIGINT NOT NULL AUTO_INCREMENT," +
-    " random_number INT(8) NOT NULL, random_boolean BOOLEAN NOT NULL," +
-    " PRIMARY KEY (autoincrement_id)) TYPE=MEMORY;") && res;
+  res = conn.querySync("DELETE FROM " + cfg.test_table + ";");
   test.ok(res, "conn.querySync('DELETE FROM cfg.test_table')");
   
   res = conn.querySync("INSERT INTO " + cfg.test_table +
@@ -67,6 +64,14 @@ var testFieldSeekAndTellAndFetchAndFetchDirectAndFetchFieldsSync = function (tes
   test.done();
 };
 
+exports.New = function (test) {
+  test.expect(1);
+  
+  test.throws(function () {var res = new mysql_bindings.MysqlResult();}, TypeError, "new mysql_bindings.MysqlResult() should throw exception from JS code");
+  
+  test.done();
+};
+
 exports.DataSeekSync = function (test) {
   test.expect(6);
   
@@ -75,11 +80,7 @@ exports.DataSeekSync = function (test) {
     row;
   test.ok(conn, "mysql_libmysqlclient.createConnectionSync(host, user, password, database)");
   
-  res = conn.querySync("DROP TABLE IF EXISTS " + cfg.test_table + ";");
-  res = conn.querySync("CREATE TABLE " + cfg.test_table +
-    " (autoincrement_id BIGINT NOT NULL AUTO_INCREMENT," +
-    " random_number INT(8) NOT NULL, random_boolean BOOLEAN NOT NULL," +
-    " PRIMARY KEY (autoincrement_id)) TYPE=MEMORY;") && res;
+  res = conn.querySync("DELETE FROM " + cfg.test_table + ";");
   test.ok(res, "conn.querySync('DELETE FROM cfg.test_table')");
   
   res = conn.querySync("INSERT INTO " + cfg.test_table +
@@ -106,7 +107,7 @@ exports.DataSeekSync = function (test) {
 };
 
 exports.FetchAll = function (test) {
-  test.expect(5);
+  test.expect(4);
   
   var conn = mysql_libmysqlclient.createConnectionSync(cfg.host, cfg.user, cfg.password, cfg.database),
     res;
@@ -116,25 +117,20 @@ exports.FetchAll = function (test) {
   res.fetchAll(function (err, tables) {
     test.ok(err === null, "res.fetchAll() err===null");
     test.ok(tables, "res.fetchAll() result");
-    res = false;
-    tables.forEach(function (table) {
-      if (table.Tables_in_test === cfg.test_table) {
-        res = true;
-      }
-    });
-    test.ok(res, "res.fetchAllSync() show test table");
     conn.closeSync();
-  
+    
     test.done();
   });
 };
 
 exports.FetchAllSync = function (test) {
-  test.expect(4);
+  test.expect(7);
   
   var conn = mysql_libmysqlclient.createConnectionSync(cfg.host, cfg.user, cfg.password, cfg.database),
     res,
-    tables;
+    tables,
+    rows;
+  
   test.ok(conn, "mysql_libmysqlclient.createConnectionSync(host, user, password, database)");
   res = conn.querySync("SHOW TABLES;");
   test.ok(res, "conn.querySync('SHOW TABLES;')");
@@ -147,6 +143,22 @@ exports.FetchAllSync = function (test) {
     }
   });
   test.ok(res, "res.fetchAllSync() show test table");
+  
+  res = conn.querySync("DELETE FROM " + cfg.test_table + ";");
+  res = conn.querySync("INSERT INTO " + cfg.test_table +
+                   " (random_number, random_boolean) VALUES ('1', '1');") && res;
+  res = conn.querySync("INSERT INTO " + cfg.test_table +
+                    " (random_number, random_boolean) VALUES ('2', '1');") && res;
+  res = conn.querySync("INSERT INTO " + cfg.test_table +
+                   " (random_number, random_boolean) VALUES ('3', '0');") && res;
+  test.ok(res, "INSERT");
+  
+  res = conn.querySync("SELECT random_number from " + cfg.test_table +
+                   " WHERE random_boolean='0';");
+  test.ok(res, "SELECT");
+  rows = res.fetchAllSync();
+  test.same(rows, [{random_number: 3}], "conn.querySync('SELECT ...').fetchAllSync()");
+  
   conn.closeSync();
   
   test.done();
@@ -302,8 +314,8 @@ exports.FreeSync = function (test) {
   
   var conn = mysql_libmysqlclient.createConnectionSync(cfg.host, cfg.user, cfg.password, cfg.database),
     res,
-    rows,
-    flag;
+    rows;
+  
   test.ok(conn, "mysql_libmysqlclient.createConnectionSync(host, user, password, database)");
   
   res = conn.querySync("DELETE FROM " + cfg.test_table + ";");
@@ -324,13 +336,7 @@ exports.FreeSync = function (test) {
   
   res.freeSync();
   
-  flag = false;
-  try {
-    rows = res.numRowsSync();
-  } catch (e) {
-    flag = true;
-  }
-  test.ok(flag, "res.numRowsSync() after res.freeSync()");
+  test.throws(function () {rows = res.numRowsSync();}, "res.numRowsSync() after res.freeSync()");
   
   conn.closeSync();
   

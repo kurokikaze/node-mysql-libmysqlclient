@@ -1,12 +1,12 @@
 /*
-Copyright by node-mysql-libmysqlclient contributors.
+Copyright by Oleg Efimov and node-mysql-libmysqlclient contributors
 See contributors list in README
 
 See license text in LICENSE file
 */
 
-#ifndef NODE_MYSQL_RESULT_H  // NOLINT
-#define NODE_MYSQL_RESULT_H
+#ifndef SRC_MYSQL_BINDINGS_RESULT_H_
+#define SRC_MYSQL_BINDINGS_RESULT_H_
 
 #include <mysql.h>
 
@@ -31,7 +31,7 @@ static Persistent<String> result_fieldTellSync_symbol;
 static Persistent<String> result_freeSync_symbol;
 static Persistent<String> result_numRowsSync_symbol;
 
-class MysqlConn::MysqlResult : public node::EventEmitter {
+class MysqlResult : public node::EventEmitter {
   public:
     static Persistent<FunctionTemplate> constructor_template;
 
@@ -56,9 +56,9 @@ class MysqlConn::MysqlResult : public node::EventEmitter {
     MysqlResult();
 
     explicit MysqlResult(MYSQL_RES *my_result, uint32_t my_field_count):
-                                    EventEmitter(),
-                                    _res(my_result),
-                                    field_count(my_field_count) {}
+                                                EventEmitter(),
+                                                _res(my_result),
+                                                field_count(my_field_count) {}
 
     ~MysqlResult();
 
@@ -69,19 +69,21 @@ class MysqlConn::MysqlResult : public node::EventEmitter {
     // Properties
 
     static Handle<Value> FieldCountGetter(Local<String> property,
-                                             const AccessorInfo &info);
+                                           const AccessorInfo &info);
 
     // Methods
 
     static Handle<Value> DataSeekSync(const Arguments& args);
 
+#ifndef MYSQL_NON_THREADSAFE
     struct fetchAll_request {
         Persistent<Function> callback;
-        MysqlConn::MysqlResult *res;
+        MysqlResult *res;
         Local<Array> js_result;
     };
     static int EIO_After_FetchAll(eio_req *req);
     static int EIO_FetchAll(eio_req *req);
+#endif
     static Handle<Value> FetchAll(const Arguments& args);
 
     static Handle<Value> FetchAllSync(const Arguments& args);
@@ -107,5 +109,5 @@ class MysqlConn::MysqlResult : public node::EventEmitter {
     static Handle<Value> NumRowsSync(const Arguments& args);
 };
 
-#endif  // NODE_MYSQL_RESULT_H  // NOLINT
+#endif  // SRC_MYSQL_BINDINGS_RESULT_H_
 

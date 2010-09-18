@@ -1,17 +1,27 @@
-/*
-Copyright by node-mysql-libmysqlclient contributors.
-See contributors list in README
+/*!
+ * Copyright by Oleg Efimov and node-mysql-libmysqlclient contributors
+ * See contributors list in README
+ *
+ * See license text in LICENSE file
+ */
 
-See license text in LICENSE file
-*/
-
+/**
+ * Include headers
+ *
+ * @ignore
+ */
 #include "./mysql_bindings_connection.h"
 #include "./mysql_bindings_result.h"
 #include "./mysql_bindings_statement.h"
 
-Persistent<FunctionTemplate> MysqlConn::MysqlStatement::constructor_template;
+/**
+ * Init V8 structures for MysqlStatement class
+ *
+ * @ignore
+ */
+Persistent<FunctionTemplate> MysqlStatement::constructor_template;
 
-void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
+void MysqlStatement::Init(Handle<Object> target) {
     HandleScope scope;
 
     Local<FunctionTemplate> t = FunctionTemplate::New(New);
@@ -53,9 +63,13 @@ void MysqlConn::MysqlStatement::Init(Handle<Object> target) {
     ADD_PROTOTYPE_METHOD(statement, resultMetadataSync, ResultMetadataSync);
     ADD_PROTOTYPE_METHOD(statement, storeResultSync, StoreResultSync);
     ADD_PROTOTYPE_METHOD(statement, sqlStateSync, SqlStateSync);
+
+    // Make it visible in JavaScript
+    target->Set(String::NewSymbol("MysqlStatement"),
+                                  constructor_template->GetFunction());
 }
 
-MysqlConn::MysqlStatement::MysqlStatement(MYSQL_STMT *my_stmt): EventEmitter() {
+MysqlStatement::MysqlStatement(MYSQL_STMT *my_stmt): EventEmitter() {
     this->_stmt = my_stmt;
     this->binds = NULL;
     this->param_count = 0;
@@ -63,7 +77,7 @@ MysqlConn::MysqlStatement::MysqlStatement(MYSQL_STMT *my_stmt): EventEmitter() {
     this->stored = false;
 }
 
-MysqlConn::MysqlStatement::~MysqlStatement() {
+MysqlStatement::~MysqlStatement() {
     if (this->_stmt) {
         if (this->prepared) {
             for (uint64_t i = 0; i < this->param_count; i++) {
@@ -82,7 +96,7 @@ MysqlConn::MysqlStatement::~MysqlStatement() {
                 } else if (this->binds[i].buffer_type == MYSQL_TYPE_DATETIME) {
                     delete static_cast<MYSQL_TIME *>(this->binds[i].buffer);
                 } else {
-                    printf("MysqlConn::MysqlStatement::~MysqlStatement: o_0\n");
+                    printf("MysqlStatement::~MysqlStatement: o_0\n");
                 }
             }
             delete[] this->binds;
@@ -92,7 +106,12 @@ MysqlConn::MysqlStatement::~MysqlStatement() {
     }
 }
 
-Handle<Value> MysqlConn::MysqlStatement::New(const Arguments& args) {
+/**
+ * Create new MySQL statement object
+ *
+ * @constructor
+ */
+Handle<Value> MysqlStatement::New(const Arguments& args) {
     HandleScope scope;
 
     REQ_EXT_ARG(0, js_stmt);
@@ -103,7 +122,7 @@ Handle<Value> MysqlConn::MysqlStatement::New(const Arguments& args) {
     return args.This();
 }
 
-Handle<Value> MysqlConn::MysqlStatement::ParamCountGetter(Local<String> property,
+Handle<Value> MysqlStatement::ParamCountGetter(Local<String> property,
                                                           const AccessorInfo &info) {
     HandleScope scope;
 
@@ -115,7 +134,7 @@ Handle<Value> MysqlConn::MysqlStatement::ParamCountGetter(Local<String> property
     return scope.Close(Integer::New(stmt->param_count));
 }
 
-Handle<Value> MysqlConn::MysqlStatement::AffectedRowsSync(const Arguments& args) {
+Handle<Value> MysqlStatement::AffectedRowsSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -134,7 +153,7 @@ Handle<Value> MysqlConn::MysqlStatement::AffectedRowsSync(const Arguments& args)
     return scope.Close(Integer::New(affected_rows));
 }
 
-Handle<Value> MysqlConn::MysqlStatement::AttrGetSync(const Arguments& args) {
+Handle<Value> MysqlStatement::AttrGetSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -167,7 +186,7 @@ Handle<Value> MysqlConn::MysqlStatement::AttrGetSync(const Arguments& args) {
     return THREXC("Control reaches end of non-void function :-D");
 }
 
-Handle<Value> MysqlConn::MysqlStatement::AttrSetSync(const Arguments& args) {
+Handle<Value> MysqlStatement::AttrSetSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -204,7 +223,7 @@ Handle<Value> MysqlConn::MysqlStatement::AttrSetSync(const Arguments& args) {
     return scope.Close(True());
 }
 
-Handle<Value> MysqlConn::MysqlStatement::BindParamsSync(const Arguments& args) {
+Handle<Value> MysqlStatement::BindParamsSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -314,7 +333,7 @@ Handle<Value> MysqlConn::MysqlStatement::BindParamsSync(const Arguments& args) {
 }
 
 
-Handle<Value> MysqlConn::MysqlStatement::CloseSync(const Arguments& args) {
+Handle<Value> MysqlStatement::CloseSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -330,7 +349,7 @@ Handle<Value> MysqlConn::MysqlStatement::CloseSync(const Arguments& args) {
     return scope.Close(True());
 }
 
-Handle<Value> MysqlConn::MysqlStatement::DataSeekSync(const Arguments& args) {
+Handle<Value> MysqlStatement::DataSeekSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -355,7 +374,7 @@ Handle<Value> MysqlConn::MysqlStatement::DataSeekSync(const Arguments& args) {
     return Undefined();
 }
 
-Handle<Value> MysqlConn::MysqlStatement::ErrnoSync(const Arguments& args) {
+Handle<Value> MysqlStatement::ErrnoSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -369,7 +388,7 @@ Handle<Value> MysqlConn::MysqlStatement::ErrnoSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlStatement::ErrorSync(const Arguments& args) {
+Handle<Value> MysqlStatement::ErrorSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -383,7 +402,7 @@ Handle<Value> MysqlConn::MysqlStatement::ErrorSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlStatement::ExecuteSync(const Arguments& args) {
+Handle<Value> MysqlStatement::ExecuteSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -398,7 +417,7 @@ Handle<Value> MysqlConn::MysqlStatement::ExecuteSync(const Arguments& args) {
     return scope.Close(True());
 }
 
-Handle<Value> MysqlConn::MysqlStatement::FieldCountSync(const Arguments& args) {
+Handle<Value> MysqlStatement::FieldCountSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -409,7 +428,7 @@ Handle<Value> MysqlConn::MysqlStatement::FieldCountSync(const Arguments& args) {
     return scope.Close(Integer::New(mysql_stmt_field_count(stmt->_stmt)));
 }
 
-Handle<Value> MysqlConn::MysqlStatement::FreeSync(const Arguments& args) {
+Handle<Value> MysqlStatement::FreeSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -419,7 +438,7 @@ Handle<Value> MysqlConn::MysqlStatement::FreeSync(const Arguments& args) {
     return scope.Close(!mysql_stmt_free_result(stmt->_stmt) ? True() : False());
 }
 
-Handle<Value> MysqlConn::MysqlStatement::LastInsertIdSync(const Arguments& args) {
+Handle<Value> MysqlStatement::LastInsertIdSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -432,7 +451,7 @@ Handle<Value> MysqlConn::MysqlStatement::LastInsertIdSync(const Arguments& args)
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlStatement::NumRowsSync(const Arguments& args) {
+Handle<Value> MysqlStatement::NumRowsSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -451,7 +470,7 @@ Handle<Value> MysqlConn::MysqlStatement::NumRowsSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlStatement::ParamCountSync(const Arguments& args) {
+Handle<Value> MysqlStatement::ParamCountSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -464,7 +483,13 @@ Handle<Value> MysqlConn::MysqlStatement::ParamCountSync(const Arguments& args) {
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlStatement::PrepareSync(const Arguments& args) {
+/**
+ * Prepare statement by given query
+ *
+ * @param {String} query
+ * @return {Boolean}
+ */
+Handle<Value> MysqlStatement::PrepareSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -502,7 +527,7 @@ Handle<Value> MysqlConn::MysqlStatement::PrepareSync(const Arguments& args) {
     return scope.Close(True());
 }
 
-Handle<Value> MysqlConn::MysqlStatement::ResetSync(const Arguments& args) {
+Handle<Value> MysqlStatement::ResetSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -518,7 +543,7 @@ Handle<Value> MysqlConn::MysqlStatement::ResetSync(const Arguments& args) {
     return scope.Close(True());
 }
 
-Handle<Value> MysqlConn::MysqlStatement::ResultMetadataSync(const Arguments& args) {
+Handle<Value> MysqlStatement::ResultMetadataSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -536,13 +561,13 @@ Handle<Value> MysqlConn::MysqlStatement::ResultMetadataSync(const Arguments& arg
     Local<Value> argv[2];
     argv[0] = External::New(my_result);
     argv[1] = Integer::New(mysql_stmt_field_count(stmt->_stmt));
-    Persistent<Object> js_result(MysqlConn::MysqlResult::constructor_template->
-                             GetFunction()->NewInstance(argc, argv));
+    Persistent<Object> js_result(MysqlResult::constructor_template->
+                                 GetFunction()->NewInstance(argc, argv));
 
     return scope.Close(js_result);
 }
 
-Handle<Value> MysqlConn::MysqlStatement::StoreResultSync(const Arguments& args) {
+Handle<Value> MysqlStatement::StoreResultSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());
@@ -559,7 +584,7 @@ Handle<Value> MysqlConn::MysqlStatement::StoreResultSync(const Arguments& args) 
     return scope.Close(True());
 }
 
-Handle<Value> MysqlConn::MysqlStatement::SqlStateSync(const Arguments& args) {
+Handle<Value> MysqlStatement::SqlStateSync(const Arguments& args) {
     HandleScope scope;
 
     MysqlStatement *stmt = OBJUNWRAP<MysqlStatement>(args.This());

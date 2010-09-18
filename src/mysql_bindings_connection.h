@@ -1,5 +1,5 @@
 /*
-Copyright by node-mysql-libmysqlclient contributors.
+Copyright by Oleg Efimov and node-mysql-libmysqlclient contributors
 See contributors list in README
 
 See license text in LICENSE file
@@ -14,11 +14,11 @@ See license text in LICENSE file
 #include <node.h>
 #include <node_events.h>
 
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-
 #include <pthread.h>
+
+#include <cstdlib>
+#include <cstring>
 
 #define ADD_PROTOTYPE_METHOD(class, name, method) \
 class ## _ ## name ## _symbol = NODE_PSYMBOL(#name); \
@@ -29,9 +29,11 @@ NODE_SET_PROTOTYPE_METHOD(constructor_template, #name, method);
 // [whitespace/line_length] [2]
 // Lines should very rarely be longer than 100 characters
 // [whitespace/line_length] [4]
+#define V8EXC(str) Exception::Error(String::New(str))
 #define THREXC(str) ThrowException(Exception::Error(String::New(str)))
-
+#define THRTYPEEXC(str) ThrowException(Exception::TypeError(String::New(str)))
 #define OBJUNWRAP ObjectWrap::Unwrap
+#define V8STR(str) String::New(str)
 
 #define REQ_INT_ARG(I, VAR) \
 if (args.Length() <= (I) || !args[I]->IsInt32()) \
@@ -85,6 +87,9 @@ Local<External> VAR = Local<External>::Cast(args[I]);
     conn->multi_query = true; \
 }
 
+#define MYSQL_NON_THREADSAFE_ERRORSTRING \
+        "Asynchronous functions works only with threadsafe libmysqlclient_r"
+
 using namespace v8; // NOLINT
 
 static Persistent<String> connection_affectedRowsSync_symbol;
@@ -106,35 +111,37 @@ static Persistent<String> connection_getCharsetNameSync_symbol;
 static Persistent<String> connection_getInfoSync_symbol;
 static Persistent<String> connection_getInfoStringSync_symbol;
 static Persistent<String> connection_getWarningsSync_symbol;
+static Persistent<String> connection_initSync_symbol;
 static Persistent<String> connection_initStatementSync_symbol;
 static Persistent<String> connection_lastInsertIdSync_symbol;
 static Persistent<String> connection_multiMoreResultsSync_symbol;
 static Persistent<String> connection_multiNextResultSync_symbol;
 static Persistent<String> connection_multiRealQuerySync_symbol;
 static Persistent<String> connection_pingSync_symbol;
-static Persistent<String> connection_querySync_symbol;
 static Persistent<String> connection_query_symbol;
+static Persistent<String> connection_querySync_symbol;
+static Persistent<String> connection_realConnectSync_symbol;
 static Persistent<String> connection_realQuerySync_symbol;
 static Persistent<String> connection_rollbackSync_symbol;
 static Persistent<String> connection_selectDbSync_symbol;
 static Persistent<String> connection_setCharsetSync_symbol;
+static Persistent<String> connection_setOptionSync_symbol;
 static Persistent<String> connection_setSslSync_symbol;
 static Persistent<String> connection_sqlStateSync_symbol;
 static Persistent<String> connection_statSync_symbol;
 static Persistent<String> connection_storeResultSync_symbol;
 static Persistent<String> connection_threadIdSync_symbol;
-static Persistent<String> connection_threadKillSync_symbol;
 static Persistent<String> connection_threadSafeSync_symbol;
 static Persistent<String> connection_useResultSync_symbol;
 static Persistent<String> connection_warningCountSync_symbol;
 
-class MysqlConn : public node::EventEmitter {
+class MysqlConnection : public node::EventEmitter {
   public:
     static Persistent<FunctionTemplate> constructor_template;
 
     static void Init(Handle<Object> target);
 
-    struct MysqlConnInfo {
+    struct MysqlConnectionInfo {
         uint64_t client_version;
         const char *client_info;
         uint64_t server_version;
@@ -143,11 +150,14 @@ class MysqlConn : public node::EventEmitter {
         uint32_t proto_info;
     };
 
-    class MysqlResult;
-
-    class MysqlStatement;
-
     bool Connect(const char* hostname,
+                 const char* user,
+                 const char* password,
+                 const char* dbname,
+                 uint32_t port,
+                 const char* socket);
+
+    bool RealConnect(const char* hostname,
                  const char* user,
                  const char* password,
                  const char* dbname,
@@ -156,7 +166,7 @@ class MysqlConn : public node::EventEmitter {
 
     void Close();
 
-    MysqlConnInfo GetInfo();
+    MysqlConnectionInfo GetInfo();
 
   protected:
     MYSQL *_conn;
@@ -169,9 +179,9 @@ class MysqlConn : public node::EventEmitter {
     unsigned int connect_errno;
     const char *connect_error;
 
-    MysqlConn();
+    MysqlConnection();
 
-    ~MysqlConn();
+    ~MysqlConnection();
 
     // Constructor
 
@@ -195,9 +205,10 @@ class MysqlConn : public node::EventEmitter {
 
     static Handle<Value> CommitSync(const Arguments& args);
 
+#ifndef MYSQL_NON_THREADSAFE
     struct connect_request {
         Persistent<Function> callback;
-        MysqlConn *conn;
+        MysqlConnection *conn;
         String::Utf8Value *hostname;
         String::Utf8Value *user;
         String::Utf8Value *password;
@@ -207,6 +218,7 @@ class MysqlConn : public node::EventEmitter {
     };
     static int EIO_After_Connect(eio_req *req);
     static int EIO_Connect(eio_req *req);
+#endif
     static Handle<Value> Connect(const Arguments& args);
 
     static Handle<Value> ConnectSync(const Arguments& args);
@@ -237,6 +249,8 @@ class MysqlConn : public node::EventEmitter {
 
     static Handle<Value> GetWarningsSync(const Arguments& args);
 
+    static Handle<Value> InitSync(const Arguments& args);
+
     static Handle<Value> InitStatementSync(const Arguments& args);
 
     static Handle<Value> LastInsertIdSync(const Arguments& args);
@@ -249,18 +263,22 @@ class MysqlConn : public node::EventEmitter {
 
     static Handle<Value> PingSync(const Arguments& args);
 
+#ifndef MYSQL_NON_THREADSAFE
     struct query_request {
         Persistent<Function> callback;
-        MysqlConn *conn;
+        MysqlConnection *conn;
         char *query;
         MYSQL_RES *my_result;
         uint32_t field_count;
     };
     static int EIO_After_Query(eio_req *req);
     static int EIO_Query(eio_req *req);
+#endif
     static Handle<Value> Query(const Arguments& args);
 
     static Handle<Value> QuerySync(const Arguments& args);
+
+    static Handle<Value> RealConnectSync(const Arguments& args);
 
     static Handle<Value> RealQuerySync(const Arguments& args);
 
@@ -269,6 +287,8 @@ class MysqlConn : public node::EventEmitter {
     static Handle<Value> SelectDbSync(const Arguments& args);
 
     static Handle<Value> SetCharsetSync(const Arguments& args);
+
+    static Handle<Value> SetOptionSync(const Arguments& args);
 
     static Handle<Value> SetSslSync(const Arguments& args);
 
@@ -280,16 +300,12 @@ class MysqlConn : public node::EventEmitter {
 
     static Handle<Value> ThreadIdSync(const Arguments& args);
 
-    static Handle<Value> ThreadKillSync(const Arguments& args);
-
     static Handle<Value> ThreadSafeSync(const Arguments& args);
 
     static Handle<Value> UseResultSync(const Arguments& args);
 
     static Handle<Value> WarningCountSync(const Arguments& args);
 };
-
-extern "C" void init(Handle<Object> target);
 
 #endif  // NODE_MYSQL_CONNECTION_H  // NOLINT
 

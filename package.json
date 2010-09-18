@@ -1,26 +1,32 @@
 {  "name" : "mysql-libmysqlclient"
 ,  "description" : "MySQL bindings for Node.JS"
-,  "version" : "0.0.8"
+,  "version" : "0.0.10"
 , "maintainers" :
   [ { "name": "Oleg Efimov"
     , "email": "efimovov@gmail.com"
     }
   ]
 , "contributors" :
-  [ { "name": "Surendra Singhi"
-    , "email": "ssinghi@kreeti.com",
+  [ { "name": "Oleg Efimov"
+    , "email": "efimovov@gmail.com"
+    }
+  , { "name": "Surendra Singhi"
+    , "email": "ssinghi@kreeti.com"
+    }
+  , { "name": "Akzhan Abdulin"
+    , "email": "akzhan.abdulin@gmail.com"
     }
   , { "name": "Robin Duckett"
-    , "email": "robin.duckett@gmail.com",
+    , "email": "robin.duckett@gmail.com"
     }
   , { "name": "Dan Beam"
-    , "email": "dan@danbeam.org",
+    , "email": "dan@danbeam.org"
     }
   , { "name": "Maurits Lamers"
-    , "email": "maurits@weidestraat.nl",
+    , "email": "maurits@weidestraat.nl"
     }
   ]
-, "bugs" : { "web" : "http://github.com/Sannis/node-mysql-libmysqlclient/issues" },
+, "bugs" : { "web" : "http://github.com/Sannis/node-mysql-libmysqlclient/issues" }
 , "licenses" : [ { "type" : "MIT" } ]
 , "repositories" :
   [ { "type" : "git"
@@ -32,5 +38,5 @@
   { "build" : "node-waf configure build"
   , "test" : "node-waf test"
   }
-, "engines" : { "node" : ">=0.2.0" },
+, "engines" : { "node" : ">=0.2.1" }
 }

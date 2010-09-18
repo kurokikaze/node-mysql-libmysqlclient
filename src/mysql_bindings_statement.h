@@ -1,5 +1,5 @@
 /*
-Copyright by node-mysql-libmysqlclient contributors.
+Copyright by Oleg Efimov and node-mysql-libmysqlclient contributors
 See contributors list in README
 
 See license text in LICENSE file
@@ -46,7 +46,7 @@ static Persistent<String> statement_resultMetadataSync_symbol;
 static Persistent<String> statement_storeResultSync_symbol;
 static Persistent<String> statement_sqlStateSync_symbol;
 
-class MysqlConn::MysqlStatement : public node::EventEmitter {
+class MysqlStatement : public node::EventEmitter {
   public:
     static Persistent<FunctionTemplate> constructor_template;
 
