@@ -56,30 +56,39 @@ def lint(lnt):
   Utils.exec_command('cpplint ./src/*.h ./src/*.cc')
   # Bindings javascript code, tools and tests
   print("Run Nodeint:")
-  Utils.exec_command('nodelint --config ./nodelint.cfg ./package.json ./mysql-libmysqlclient.js ./docs/*.js ./tools/*.js ./tools/tests/*.js')
+  Utils.exec_command('nodelint ./package.json ./mysql-libmysqlclient.js ./docs/*.js ./tools/*.js ./tools/tests/*.js')
 
 def docs(dcs):
+  print("Parse README:")
+  Utils.exec_command('dox --title "Node-mysql-libmysqlclient" ' +
+                     '--desc "MySQL bindings for [Node.js](http://nodejs.org) using libmysqlclient.\n\n' +
+                     'Check out the [Github repo](http://github.com/Sannis/node-mysql-libmysqlclient) for the source and installation guide.\n\n' +
+                     'Extra information: [API](./api.html), [Examples](./examples.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
+                     '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient" '  +
+                     '--ignore-filenames ' +
+                     './README.markdown ' +
+                     '> ./docs/index.html')
   print("Parse API docs:")
   Utils.exec_command('dox --title "Node-mysql-libmysqlclient API" ' +
                      '--desc "MySQL bindings for [Node.js](http://nodejs.org) using libmysqlclient.\n\n' +
                      'Check out the [Github repo](http://github.com/Sannis/node-mysql-libmysqlclient) for the source and installation guide.\n\n' +
-                     '[Home](./index.html), [API](./api.html), [Examples](./examples.html)." ' +
-                     '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient'  +
+                     'Extra information: [Homepage](./index.html), [Examples](./examples.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
+                     '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient" '  +
                      './mysql-libmysqlclient.js ' +
                      './src/mysql_bindings.cc ' +
                      './src/mysql_bindings_connection.cc ' +
                      './src/mysql_bindings_result.cc ' +
                      './src/mysql_bindings_statement.cc ' +
-                     ' > ./docs/api.html')
+                     '> ./docs/api.html')
   print("Parse examples:")
   Utils.exec_command('dox --title "Node-mysql-libmysqlclient examples" ' +
                      '--desc "MySQL bindings for [Node.js](http://nodejs.org) using libmysqlclient.\n\n' +
                      'Check out the [Github repo](http://github.com/Sannis/node-mysql-libmysqlclient) for the source and installation guide.\n\n' +
-                     '[Home](./index.html), [API](./api.html), [Examples](./examples.html)." ' +
+                     'Extra information: [Homepage](./index.html), [API](./api.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
                      '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient" ' +
                      '--ignore-shabang ' +
                      './docs/examples.js ' +
-                     ' > ./docs/examples.html')
+                     '> ./docs/examples.html')
 
 def shutdown():
   # HACK to get bindings.node out of build directory.
