@@ -16,6 +16,9 @@ VERSION = "0.0.10"
 def set_options(opt):
   opt.tool_options("compiler_cxx")
   opt.add_option('--mysql-config', action='store', default='mysql_config', help='Path to mysql_config, e.g. /usr/bin/mysql_config')
+  opt.add_option('--all', action='store_true', help='Run all tests (include slow, exclude ignored)')
+  opt.add_option('--slow', action='store_true', help='Run slow tests')
+  opt.add_option('--ignored', action='store_true', help='Run ignored tests')
 
 def configure(conf):
   conf.check_tool("compiler_cxx")
@@ -48,7 +51,19 @@ def test(tst):
     print("\033[31mNodeunit doesn't exists.\033[39m\nYou should run `git submodule update --init` before run tests.")
     exit(1)
   else:
-    Utils.exec_command('node ./tools/nodeunit/lib/testrunner.js tools/tests/*.js')
+    if Options.options.slow and Options.options.ignored:
+      Utils.exec_command('node_g ./tools/nodeunit/lib/testrunner.js tests/slow tests/ignored')
+    else:
+      if Options.options.slow:
+        Utils.exec_command('node ./tools/nodeunit/lib/testrunner.js tests/slow')
+      else:
+        if Options.options.ignored:
+          Utils.exec_command('node_g ./tools/nodeunit/lib/testrunner.js tests/ignored')
+        else:
+          if Options.options.all:
+            Utils.exec_command('node ./tools/nodeunit/lib/testrunner.js tests/simple tests/complex tests/slow')
+          else:
+            Utils.exec_command('node ./tools/nodeunit/lib/testrunner.js tests/simple tests/complex')
 
 def lint(lnt):
   # Bindings C++ source code
@@ -58,37 +73,57 @@ def lint(lnt):
   print("Run Nodeint:")
   Utils.exec_command('nodelint ./package.json ./mysql-libmysqlclient.js ./docs/*.js ./tools/*.js ./tools/tests/*.js')
 
-def docs(dcs):
-  print("Parse README:")
+def doc(doc):
+  description = ('--desc "MySQL bindings for [Node.js](http://nodejs.org) using libmysqlclient.\n\n' +
+                 'Check out the [Github repo](http://github.com/Sannis/node-mysql-libmysqlclient) for the source and installation guide.\n\n' +
+                 'Extra information: ')
+  ribbon = '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient" '
+  
+  downloads = ('--desc-rigth "' +
+               'Latest stable v' + VERSION + ':<br/>\n' +
+               '<a href="http://github.com/Sannis/node-mysql-libmysqlclient/zipball/v' + VERSION + '">\n' +
+               ' <img width="90" src="http://github.com/images/modules/download/zip.png" />\n' +
+               '</a>\n' +
+               '<a href="http://github.com/Sannis/node-mysql-libmysqlclient/tarball/v' + VERSION + '">\n' +
+               ' <img width="90" src="http://github.com/images/modules/download/tar.png" />\n' +
+               '</a>" ')
+  
+  print("Parse README.markdown:")
   Utils.exec_command('dox --title "Node-mysql-libmysqlclient" ' +
-                     '--desc "MySQL bindings for [Node.js](http://nodejs.org) using libmysqlclient.\n\n' +
-                     'Check out the [Github repo](http://github.com/Sannis/node-mysql-libmysqlclient) for the source and installation guide.\n\n' +
-                     'Extra information: [API](./api.html), [Examples](./examples.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
-                     '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient" '  +
+                     description +
+                     '[ChangeLog](./changelog.html), [API](./api.html), [Examples](./examples.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
+                     ribbon +
+                     downloads +
                      '--ignore-filenames ' +
                      './README.markdown ' +
-                     '> ./docs/index.html')
-  print("Parse API docs:")
+                     '> ./doc/index.html')
+  print("Parse CHANGELOG.markdown:")
+  Utils.exec_command('dox --title "Node-mysql-libmysqlclient changelog" ' +
+                     description +
+                     '[Homepage](./index.html), [API](./api.html), [Examples](./examples.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
+                     ribbon +
+                     '--ignore-filenames ' +
+                     './CHANGELOG.markdown ' +
+                     '> ./doc/changelog.html')
+  print("Parse API documentation:")
   Utils.exec_command('dox --title "Node-mysql-libmysqlclient API" ' +
-                     '--desc "MySQL bindings for [Node.js](http://nodejs.org) using libmysqlclient.\n\n' +
-                     'Check out the [Github repo](http://github.com/Sannis/node-mysql-libmysqlclient) for the source and installation guide.\n\n' +
-                     'Extra information: [Homepage](./index.html), [Examples](./examples.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
-                     '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient" '  +
+                     description +
+                     '[Homepage](./index.html), [ChangeLog](./changelog.html), [Examples](./examples.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
+                     ribbon +
                      './mysql-libmysqlclient.js ' +
                      './src/mysql_bindings.cc ' +
                      './src/mysql_bindings_connection.cc ' +
                      './src/mysql_bindings_result.cc ' +
                      './src/mysql_bindings_statement.cc ' +
-                     '> ./docs/api.html')
-  print("Parse examples:")
+                     '> ./doc/api.html')
+  print("Parse module usage examples:")
   Utils.exec_command('dox --title "Node-mysql-libmysqlclient examples" ' +
-                     '--desc "MySQL bindings for [Node.js](http://nodejs.org) using libmysqlclient.\n\n' +
-                     'Check out the [Github repo](http://github.com/Sannis/node-mysql-libmysqlclient) for the source and installation guide.\n\n' +
-                     'Extra information: [Homepage](./index.html), [API](./api.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
-                     '--ribbon "http://github.com/Sannis/node-mysql-libmysqlclient" ' +
+                     description +
+                     '[Homepage](./index.html), [ChangeLog](./changelog.html), [API](./api.html), [Wiki](http://github.com/Sannis/node-mysql-libmysqlclient/wiki)." ' +
+                     ribbon +
                      '--ignore-shabang ' +
-                     './docs/examples.js ' +
-                     '> ./docs/examples.html')
+                     './doc/examples.js ' +
+                     '> ./doc/examples.html')
 
 def shutdown():
   # HACK to get bindings.node out of build directory.

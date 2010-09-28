@@ -7,7 +7,7 @@ See license text in LICENSE file
 */
 
 // Load configuration
-var cfg = require("./config").cfg;
+var cfg = require("../tests/config").cfg;
 
 // Require modules
 var
@@ -23,7 +23,7 @@ function debug(title, obj) {
   
   sys.puts("Debug '" + title + "':");
   sys.puts("  Inspect:");
-  sys.puts(sys.inspect(obj).replace(/^/, "    "));
+  sys.puts(sys.inspect(obj).replace(/^/gm, "    "));
   sys.puts("  Foreach exclude EventEmitter.prototype:");
   for (i in obj) {
     if ((typeof i === "string") && (typeof events.EventEmitter.prototype[i] === "undefined")) {
