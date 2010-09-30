@@ -11,7 +11,7 @@ from os.path import exists
 
 srcdir = "."
 blddir = "build"
-VERSION = "0.0.10"
+VERSION = "1.0.1"
 
 def set_options(opt):
   opt.tool_options("compiler_cxx")
@@ -24,7 +24,8 @@ def configure(conf):
   conf.check_tool("compiler_cxx")
   conf.check_tool("node_addon")
   
-  conf.env.append_unique('CXXFLAGS', ["-g", "-D_FILE_OFFSET_BITS=64","-D_LARGEFILE_SOURCE", "-Wall"])
+  conf.env.append_unique('CPPFLAGS', ["-D_FILE_OFFSET_BITS=64","-D_LARGEFILE_SOURCE"])
+  conf.env.append_unique('CXXFLAGS', ["-Wall"])
   
   conf.env.append_unique('CXXFLAGS', Utils.cmd_output(Options.options.mysql_config + ' --include').split())
   
@@ -124,6 +125,9 @@ def doc(doc):
                      '--ignore-shabang ' +
                      './doc/examples.js ' +
                      '> ./doc/examples.html')
+
+def gh_pages(context):
+  Utils.exec_command('./gh_pages.sh')
 
 def shutdown():
   # HACK to get bindings.node out of build directory.
